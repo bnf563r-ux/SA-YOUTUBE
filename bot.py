@@ -22,7 +22,7 @@ MAX_SIZE = 50 * 1024 * 1024
 
 
 # إنشاء كائن البوت باستخدام التوكن
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(TOKEN)
 
 # إنشاء مجلد التحميل إذا لم يكن موجودًا
 os.makedirs(OUTPUT, exist_ok=True)
