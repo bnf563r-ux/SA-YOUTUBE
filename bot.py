@@ -1,6 +1,7 @@
 import os
 import tempfile
 from pytubefix import YouTube
+from subprocess import call, STDOUT
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
@@ -14,26 +15,40 @@ async def download(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("⏳ جاري التحميل...")
     
     try:
-        # إنشاء كائن يوتيوب
         yt = YouTube(url)
         
-        # اختيار أفضل فيديو فيه صوت
-        stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+        # أفضل فيديو بدون صوت
+        video_stream = yt.streams.filter(adaptive=True, only_video=True, file_extension='mp4').order_by('resolution').desc().first()
+        # أفضل صوت
+        audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
         
-        if not stream:
-            await msg.edit_text("❌ لم أجد فيديو مناسب للتحميل")
+        if not video_stream or not audio_stream:
+            await msg.edit_text("❌ لم أتمكن من العثور على الفيديو أو الصوت")
             return
         
-        # مسار مؤقت
         temp_dir = tempfile.mkdtemp()
-        file_path = stream.download(output_path=temp_dir)
+        video_path = video_stream.download(output_path=temp_dir)
+        audio_path = audio_stream.download(output_path=temp_dir)
+        output_path = os.path.join(temp_dir, yt.title + "_merged.mp4")
         
-        # إرسال الفيديو
+        # دمج الفيديو والصوت باستخدام ffmpeg
+        call([
+            "ffmpeg",
+            "-i", video_path,
+            "-i", audio_path,
+            "-c:v", "copy",
+            "-c:a", "aac",
+            output_path
+        ], stdout=open(os.devnull, 'w'), stderr=STDOUT)
+        
         await msg.edit_text("📤 جاري الإرسال...")
-        with open(file_path, "rb") as video:
-            await update.message.reply_video(video, caption=yt.title)
+        with open(output_path, "rb") as f:
+            await update.message.reply_video(f, caption=yt.title)
         
-        os.remove(file_path)
+        # تنظيف الملفات المؤقتة
+        os.remove(video_path)
+        os.remove(audio_path)
+        os.remove(output_path)
         os.rmdir(temp_dir)
         await msg.delete()
         
