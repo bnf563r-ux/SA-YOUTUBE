@@ -12,7 +12,7 @@ from pytubefix import YouTube
 
 
 # توكن البوت (ضع التوكن الحقيقي هنا)
-TOKEN = os.getgenv("BOT_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN")
 
 # مجلد حفظ الملفات المحملة
 OUTPUT = "videos"
